@@ -63,21 +63,21 @@ module Podspecpush
       addExecute = system('git add .')
 
       if addExecute == false 
-        puts "Could not add files, consider finishing by hand and not the script"
+        puts "Could not add files to git, consider finishing by hand by performing a git add, commit, and push. Your spec repo should be up to date"
         exit
       end
 
       commitExecute = system('git commit -m "[Versioning] Updating podspec"')
 
       if commitExecute == false 
-        puts "Could not commit files, consider finishing by hand and not the script"
+        puts "Could not commit files, consider finishing by hand by performing a git commit and push. Your spec repo should be up to date"
         exit
       end
 
       pushToServer = system('git push origin master')
 
       if pushToServer == false 
-        puts "Could not push to server, consider finishing by hand and not the script"
+        puts "Could not push to server, consider finishing by hand by performing a git push. Your spec repo should be up to date"
         exit
       end
     end
