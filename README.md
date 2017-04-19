@@ -1,8 +1,10 @@
 # Podspecpush
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/podspecpush`. To experiment with that code, run `bin/console` for an interactive prompt.
+Tired of linting, checking, pushing your cocoapod spec? No more! Once you are satisified with your pod, simply increment and push the tag. No changes to .podspec required, the tooling will update this for you!
 
-TODO: Delete this and the text above, and describe your gem
+You can then publish your next version by running `podspecpush --repo <reponame>`!
+
+Thats it!
 
 ## Installation
 
@@ -22,7 +24,13 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+To push a spec repo
+
+```ruby
+podspecpush --repo myPersonalRepo --force true
+```
+
+Note: The force flag is off by default. If set to true you will push with warnings.
 
 ## Development
 
@@ -32,7 +40,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/podspecpush.
+Bug reports and pull requests are welcome on GitHub at https://github.com/jcarroll-mediafly/podspecpush.
 
 
 ## License
