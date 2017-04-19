@@ -48,8 +48,22 @@ module Podspecpush
       lint = system(lintCmd)
 
       if lint == false
-        puts "Linting failed, see errors. If its just a warning run with --force argument"
-        exit
+        puts "Linting failed, try again by allowing warnings? [Y/n]"
+        decision = gets.chomp.downcase
+        if decision == "y"
+          tryAgainCmd = "pod spec lint #{podspecName} --allow-warnings"
+          tryAgain = system(tryAgainCmd)
+          
+          if tryAgain == false
+            puts "Even with warnings, something is wrong. Look for any errors"
+            exit
+          else
+            puts "Proceeding by allowing warnings"
+            force = true
+          end
+        else
+          exit
+        end
       end
 
       pushCmd = "pod repo push #{repoName} #{podspecName}" + (force == true ? ' --allow-warnings' : '')
