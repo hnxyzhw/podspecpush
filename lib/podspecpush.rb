@@ -7,11 +7,13 @@ module Podspecpush
       opts = Trollop::options do
         opt :repo, "Repo name", :type => :string
         opt :force, "Pod verify & push with warnings"
+        opt :privateRepo, "If set, assume repo is private and skip public checks"
       end
       Trollop::die :repo, "Repo must be provided" if opts[:repo] == nil
 
       force = opts[:force]
       repoName = opts[:repo]
+      privateRepo = opts[:privateRepo]
 
       podspecName = `ls | grep .podspec`.strip
 
@@ -44,14 +46,14 @@ module Podspecpush
 
       File.open(podspecName, 'w') { |file| file.write(newFile) }
 
-      lintCmd = "pod spec lint #{podspecName}" + (force == true ? ' --allow-warnings' : '')
+      lintCmd = "pod spec lint #{podspecName}" + (force == true ? ' --allow-warnings' : '') + (privateRepo == true ? ' --private' : '')
       lint = system(lintCmd)
 
       if lint == false
         puts "Linting failed, try again by allowing warnings? [Y/n]"
         decision = gets.chomp.downcase
         if decision == "y"
-          tryAgainCmd = "pod spec lint #{podspecName} --allow-warnings"
+          tryAgainCmd = "pod spec lint #{podspecName} --allow-warnings" + (privateRepo == true ? ' --private' : '')
           tryAgain = system(tryAgainCmd)
           
           if tryAgain == false
