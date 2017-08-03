@@ -6,6 +6,7 @@ module Podspecpush
     def push
       opts = Trollop::options do
         opt :repo, "Repo name", :type => :string
+        opt :sources, "List of private repo sources to consider when linting private repo", :type => :string
         opt :force, "Pod verify & push with warnings"
         opt :privateRepo, "If set, assume repo is private and skip public checks"
       end
@@ -14,6 +15,7 @@ module Podspecpush
       force = opts[:force]
       repoName = opts[:repo]
       privateRepo = opts[:privateRepo]
+      sources = opts[:sources]
 
       podspecName = `ls | grep .podspec`.strip
 
@@ -46,14 +48,14 @@ module Podspecpush
 
       File.open(podspecName, 'w') { |file| file.write(newFile) }
 
-      lintCmd = "pod spec lint #{podspecName}" + (force == true ? ' --allow-warnings' : '') + (privateRepo == true ? ' --private' : '')
+      lintCmd = "pod spec lint #{podspecName}" + (force == true ? ' --allow-warnings' : '') + (privateRepo == true ? ' --private' : '') + (sources == nil ? '' : " --sources=#{sources}")
       lint = system(lintCmd)
 
       if lint == false
         puts "Linting failed, try again by allowing warnings? [Y/n]"
         decision = gets.chomp.downcase
         if decision == "y"
-          tryAgainCmd = "pod spec lint #{podspecName} --allow-warnings" + (privateRepo == true ? ' --private' : '')
+          tryAgainCmd = "pod spec lint #{podspecName} --allow-warnings" + (privateRepo == true ? ' --private' : '') + (sources == nil ? '' : " --sources=#{sources}")
           tryAgain = system(tryAgainCmd)
           
           if tryAgain == false
