@@ -74,8 +74,6 @@ module Podspecpush
         end
       end
 
-      exit
-
       pushCmd = "pod repo push #{repoName} #{podspecName} --allow-warnings"
       repoPush = system(pushCmd)
 
