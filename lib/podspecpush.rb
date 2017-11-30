@@ -47,15 +47,20 @@ module Podspecpush
       end
 
       File.open(podspecName, 'w') { |file| file.write(newFile) }
+      
+      isPrivateFlag = (privateRepo == true ? ' --private' : '')
+      sourcesFlag = (sources == nil ? '' : " --sources=#{sources},https://github.com/CocoaPods/Specs.git")
+      disallowWarningsLint = "pod spec lint #{podspecName}" + isPrivateFlag + sourcesFlag
+      allowWarningsLint = disallowWarningsLint + " --allow-warnings"
 
-      lintCmd = "pod spec lint #{podspecName}" + (force == true ? ' --allow-warnings' : '') + (privateRepo == true ? ' --private' : '') + (sources == nil ? '' : " --sources=#{sources}")
+      lintCmd = (force == true ? allowWarningsLint : disallowWarningsLint)
       lint = system(lintCmd)
 
       if lint == false
         puts "Linting failed, try again by allowing warnings? [Y/n]"
         decision = gets.chomp.downcase
         if decision == "y"
-          tryAgainCmd = "pod spec lint #{podspecName} --allow-warnings" + (privateRepo == true ? ' --private' : '') + (sources == nil ? '' : " --sources=#{sources}")
+          tryAgainCmd = allowWarningsLint
           tryAgain = system(tryAgainCmd)
           
           if tryAgain == false
@@ -63,14 +68,15 @@ module Podspecpush
             exit
           else
             puts "Proceeding by allowing warnings"
-            force = true
           end
         else
           exit
         end
       end
 
-      pushCmd = "pod repo push #{repoName} #{podspecName}" + (force == true ? ' --allow-warnings' : '')
+      exit
+
+      pushCmd = "pod repo push #{repoName} #{podspecName} --allow-warnings"
       repoPush = system(pushCmd)
 
       if repoPush == false
