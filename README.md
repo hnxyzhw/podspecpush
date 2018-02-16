@@ -24,10 +24,13 @@ Or install it yourself as:
 
 ## Usage
 
-To push a spec repo
-
 ```ruby
-podspecpush --repo myPersonalRepo --force true
+Options:
+  -s, --specRepo=<s>     Name of the repo to push to. See pod repo list for available repos
+  -w, --workspace=<s>    Path to cocoapod workspace
+  -o, --sources=<s>      Comma delimited list of private repo sources to consider when linting private repo. Master is included by default so private repos can source master
+  -p, --private          If set, assume the cocoapod is private and skip public checks
+  -h, --help             Show this message
 ```
 
 Note: The force flag is off by default. If set to true you will push with warnings.
