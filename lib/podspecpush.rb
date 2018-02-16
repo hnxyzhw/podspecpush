@@ -1,106 +1,151 @@
 require "podspecpush/version"
+require 'colorize'
 require 'trollop'
 
 module Podspecpush
   class PodPush
+
+    def specfile
+      Dir["*.podspec"].first
+    end
+
+    def shouldUseBundleExec
+      File.exist?('Gemfile')
+    end
+
+    def ensureSpecfile
+      podspecFile = specfile
+
+      puts "No spec file found".red unless podspecFile != nil
+      exit unless podspecFile != nil
+    end
+
+    def ensureGitClean
+      if `git status --porcelain`.length != 0
+        puts "Repo is not clean; will not push new version".red
+        exit
+      end
+
+      cmd = []
+      cmd << ['bundle exec'] if shouldUseBundleExec
+      cmd << ['pod cache clean --all'] if shouldUseBundleExec
+      system cmd.join(' ')
+    end
+
+    def makeLintCmd(opts)
+      lintCmd = []
+      lintCmd << ['bundle exec'] if shouldUseBundleExec
+      lintCmd = ["pod spec lint"]
+
+      # Build sources
+      sources = ["https://github.com/CocoaPods/Specs.git"]
+      sources << opts[:sources] unless opts[:sources] == nil
+      sourcesArg = "--sources=" + sources.join(",")
+
+      # Build lintCmd
+      lintCmd << specfile
+      lintCmd << sourcesArg
+      lintCmd << ["--private"] unless opts[:private] == false
+
+      # finalize
+      lintCmd.join(' ')
+    end
+
+    def makePushCmd(opts)
+      cmd = []
+      cmd << ['bundle exec'] if shouldUseBundleExec
+      cmd << ["pod repo push #{opts[:specRepo]} #{specfile} --allow-warnings"]
+
+      cmd.join(' ')
+    end
+
+    def updateVersion
+      puts "Please enter new version of the pod so we can tag, lint and push it! (e.g. 1.2.0)".blue
+      @podVersion = gets.chomp.downcase
+
+      puts "Please enter new a brief message to put in the git tag describing what's changed".blue
+      @podVersionMessage = gets.chomp.downcase
+
+      system "git tag -a #{@podVersion} -m #{@podVersionMessage}"
+      system "git push --tags"
+
+      contents = File.read(specfile)
+      oldVersion = Regexp.new('[0-9.]{2,6}').match(Regexp.new('(s.version)\s*=.*\n').match(contents).to_s).to_s
+      File.write(specfile, contents.gsub!(oldVersion, @podVersion))
+    end
+
+    def rollbackTag
+      puts "Rolling back git tags".green
+      system "git tag -d #{@podVersion}"
+      system "git push -d origin #{@podVersion}"
+      exit
+    end
+
+    def executeLint(withWarnings)
+      cmd = [@lintCmd]
+      cmd << "--allow-warnings" unless withWarnings == false
+
+      command = cmd.join(' ')
+
+      puts "Executing: #{command}".green
+      success = system command
+
+      if success == false && withWarnings == false
+        # Try again?
+        puts "Linting failed, try again by allowing warnings? [Y/n]".blue
+        gets.chomp.downcase == "y" ? executeLint(true) : rollbackTag
+      elsif success == false && withWarnings == true
+        puts "Even with warnings, something is wrong. Look for any errors".red
+        rollbackTag
+      end
+    end
+
+    def executePush
+      puts "Executing: #{@pushCmd}".green
+      success = system @pushCmd
+
+      if success == false
+        puts "Push failed, see errors.".red
+        rollbackTag
+      end
+    end
+
+    def commitThisRepo
+      puts "Congrats! The pod has been linted and successfully push to the spec repo! All that is left is to commit the podspec here!".green
+
+      puts "Could not commit files, consider finishing by hand by performing a git commit and push. Your spec repo should be up to date".red unless system('git commit -am "[Versioning] Updating podspec"') == true
+      puts "Could not push to server, consider finishing by hand by performing a git push. Your spec repo should be up to date".red unless system('git push origin master')
+    end
+
     def push
       opts = Trollop::options do
-        opt :repo, "Repo name", :type => :string
-        opt :sources, "List of private repo sources to consider when linting private repo", :type => :string
-        opt :force, "Pod verify & push with warnings"
-        opt :privateRepo, "If set, assume repo is private and skip public checks"
+        opt :specRepo, "Name of the repo to push to. See pod repo list for available repos", :type => :string
+        opt :workspace, "Path to cocoapod workspace", :type => :string
+        opt :sources, "Comma delimited list of private repo sources to consider when linting private repo. Master is included by default so private repos can source master", :type => :string
+        opt :private, "If set, assume the cocoapod is private and skip public checks"
       end
-      Trollop::die :repo, "Repo must be provided" if opts[:repo] == nil
+      # Need these two
+      Trollop::die :specRepo, "Spec Repo must be provided" if opts[:specRepo] == nil
+      Trollop::die :workspace, "Workspace path must be provided" if opts[:workspace] == nil
 
-      force = opts[:force]
-      repoName = opts[:repo]
-      privateRepo = opts[:privateRepo]
-      sources = opts[:sources]
+      Dir.chdir(opts[:workspace]) do
+        # Check
+        ensureGitClean
+        ensureSpecfile
 
-      podspecName = `ls | grep .podspec`.strip
+        # User input
+        updateVersion
 
-      clean = `git status --porcelain`
+        # Cmds
+        @lintCmd = makeLintCmd(opts)
+        @pushCmd = makePushCmd(opts)
 
-      if clean.length != 0 
-        puts "Repo is not clean; will not push new version"
-        exit
-      end
+        # execute
+        executeLint(false)
+        executePush
 
-      version = `git describe --abbrev=0`.strip
-
-      newFile = ""
-
-      File.readlines(podspecName).each do |line|
-        idx = /  s.version/ =~ line
-        if idx != nil && idx >= 0 
-          startIdx = line.index("\'")
-          endIdx = line.index("\'", startIdx + 1)
-          currentVersion = line[startIdx + 1...endIdx]
-          if currentVersion == version
-            puts "Can't push same version silly!"
-            exit
-          end
-          line[startIdx +1 ...endIdx] = version
-        end
-  
-        newFile += line  
-      end
-
-      File.open(podspecName, 'w') { |file| file.write(newFile) }
-      
-      isPrivateFlag = (privateRepo == true ? ' --private' : '')
-      sourcesFlag = (sources == nil ? '' : " --sources=#{sources},https://github.com/CocoaPods/Specs.git")
-      disallowWarningsLint = "pod spec lint #{podspecName}" + isPrivateFlag + sourcesFlag
-      allowWarningsLint = disallowWarningsLint + " --allow-warnings"
-
-      lintCmd = (force == true ? allowWarningsLint : disallowWarningsLint)
-      lint = system(lintCmd)
-
-      if lint == false
-        puts "Linting failed, try again by allowing warnings? [Y/n]"
-        decision = gets.chomp.downcase
-        if decision == "y"
-          tryAgainCmd = allowWarningsLint
-          tryAgain = system(tryAgainCmd)
-          
-          if tryAgain == false
-            puts "Even with warnings, something is wrong. Look for any errors"
-            exit
-          else
-            puts "Proceeding by allowing warnings"
-          end
-        else
-          exit
-        end
-      end
-
-      pushCmd = "pod repo push #{repoName} #{podspecName} --allow-warnings"
-      repoPush = system(pushCmd)
-
-      if repoPush == false
-        puts "Push failed, see errors."
-        exit
-      end
-
-      addExecute = system('git add .')
-
-      if addExecute == false 
-        puts "Could not add files to git, consider finishing by hand by performing a git add, commit, and push. Your spec repo should be up to date"
-        exit
-      end
-
-      commitExecute = system('git commit -m "[Versioning] Updating podspec"')
-
-      if commitExecute == false 
-        puts "Could not commit files, consider finishing by hand by performing a git commit and push. Your spec repo should be up to date"
-        exit
-      end
-
-      pushToServer = system('git push origin master')
-
-      if pushToServer == false 
-        puts "Could not push to server, consider finishing by hand by performing a git push. Your spec repo should be up to date"
-        exit
+        # Tidy up this repo!!
+        commitThisRepo
       end
     end
   end
