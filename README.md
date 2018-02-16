@@ -24,7 +24,7 @@ Or install it yourself as:
 
 ## Usage
 
-```ruby
+```sh
 Options:
   -s, --specRepo=<s>     Name of the repo to push to. See pod repo list for available repos
   -w, --workspace=<s>    Path to cocoapod workspace
