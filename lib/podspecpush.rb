@@ -28,7 +28,7 @@ module Podspecpush
 
       cmd = []
       cmd << ['bundle exec'] if shouldUseBundleExec
-      cmd << ['pod cache clean --all'] if shouldUseBundleExec
+      cmd << ['pod cache clean --all']
       system cmd.join(' ')
     end
 
@@ -66,7 +66,7 @@ module Podspecpush
       puts "Please enter new a brief message to put in the git tag describing what's changed".blue
       @podVersionMessage = gets.chomp.downcase
 
-      system "git tag -a #{@podVersion} -m #{@podVersionMessage}"
+      system "git tag -a #{@podVersion} -m '#{@podVersionMessage}'"
       system "git push --tags"
 
       contents = File.read(specfile)
