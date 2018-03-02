@@ -35,7 +35,7 @@ module Podspecpush
     def makeLintCmd(opts)
       lintCmd = []
       lintCmd << ['bundle exec'] if shouldUseBundleExec
-      lintCmd = ["pod spec lint"]
+      lintCmd << ["pod spec lint"]
 
       # Build sources
       sources = ["https://github.com/CocoaPods/Specs.git"]
