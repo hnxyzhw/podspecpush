@@ -71,7 +71,7 @@ module Podspecpush
 
       contents = File.read(specfile)
       oldVersion = Regexp.new('[0-9.]{2,6}').match(Regexp.new('(s.version)\s*=.*\n').match(contents).to_s).to_s
-      File.write(specfile, contents.gsub!(oldVersion, @podVersion))
+      File.write(specfile, contents.sub!(oldVersion, @podVersion))
     end
 
     def rollbackTag
